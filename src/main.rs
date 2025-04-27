@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 use jsrmx::{
     input::{InputDirectory, JsonReaderInput, JsonSourceInput},
     output::{JsonAppendableOutput, JsonWritableOutput},
-    processor::{json, NdjsonBundler, NdjsonUnbundler},
+    processor::{NdjsonBundler, NdjsonUnbundler, json},
 };
 
 #[derive(Parser)]
@@ -79,8 +79,8 @@ enum Commands {
         #[arg(short, long, value_delimiter = ',')]
         name: Option<Vec<String>>,
         /// Field name to append before the file extension
-        #[arg(short, long)]
-        r#type: Option<String>,
+        #[arg(short = 't', long = "type")]
+        type_field: Option<String>,
         /// Pretty-print output objects
         #[arg(short, long, default_value_t = true)]
         pretty: bool,
@@ -164,7 +164,7 @@ fn main() {
             name,
             output,
             pretty,
-            r#type,
+            type_field,
             unescape,
         } => {
             if pretty && !compact {
@@ -174,7 +174,7 @@ fn main() {
                     .set_pretty(true);
             }
             NdjsonUnbundler::new(input, output, unescape)
-                .unbundle(name, r#type)
+                .unbundle(name, type_field)
                 .unwrap_or_else(|e| {
                     log::error!("Error unbundling: {e}");
                 })
