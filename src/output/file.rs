@@ -11,7 +11,6 @@ use std::{
 pub struct FileOutput {
     pretty: bool,
     writer: Arc<Mutex<BufWriter<File>>>,
-    pub path: PathBuf,
 }
 
 impl Appendable for FileOutput {
@@ -54,10 +53,6 @@ impl FileOutput {
             .open(&path)
             .expect("Failed to open file");
         let writer = Arc::new(Mutex::new(BufWriter::new(file)));
-        Self {
-            pretty,
-            writer,
-            path,
-        }
+        Self { pretty, writer }
     }
 }
