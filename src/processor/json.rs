@@ -1,4 +1,6 @@
+/// Merges multiple JSON objects into a single JSON object.
 mod merge;
+/// Splits a single JSON object into multiple JSON objects.
 mod split;
 
 pub use merge::merge;
@@ -7,6 +9,13 @@ pub use split::split;
 use super::json_text::JsonText;
 use crate::processor::dots_to_slashes;
 use json_patch::jsonptr::Pointer;
+
+/// Contains the JSON data as a serde_json::Value and provides utility functions for manipulating fields
+///
+/// Provides methods for:
+/// - Escaping/unescaping specific fields
+/// - Dropping fields
+/// - Converting to/from serde_json::Value
 
 pub struct Json {
     pub value: serde_json::Value,

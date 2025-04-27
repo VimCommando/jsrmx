@@ -1,5 +1,18 @@
 use serde_json::Value;
 
+/// A representation of JSON that can be either valid JSON or string-encoded.
+///
+/// This type is useful for handling JSON that may be either a string representation or
+/// an already-parsed value, which can be string-encoded for storing in a text field.
+///
+/// The two variants are:
+/// - `String`: Contains a string-escaped JSON value.
+/// - `Value`: Contains an already parsed serde_json Value.
+///
+/// With two conversion functions:
+/// - `unescape`: Converts string-escaped JSON into a `Value`.
+/// - `escape`: Converts a `Value` into a string-escaped JSON `String`.
+
 pub enum JsonText {
     String(String),
     Value(Value),
