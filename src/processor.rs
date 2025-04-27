@@ -5,4 +5,4 @@ pub mod json_field;
 /// Process newline-delimited lists of JSON objects
 mod ndjson;
 
-pub use ndjson::{NdjsonBundler, NdjsonUnbundler};
+pub use ndjson::{Bundler, Unbundler, UnbundlerBuilder};

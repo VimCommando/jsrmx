@@ -10,6 +10,7 @@ license = "AGPL-3.0"
 clap = { version = "^4.5", features = ["derive"] }
 env_logger = "^0.11"
 eyre = "^0.6"
+json-patch = "4.0.0"
 log = "^0.4"
 rayon = "^1.10"
 regex = "^1.5"
