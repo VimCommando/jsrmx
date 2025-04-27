@@ -3,7 +3,7 @@ use eyre::{Result, eyre};
 use jsrmx::{
     input::{InputDirectory, JsonReaderInput, JsonSourceInput},
     output::{JsonAppendableOutput, JsonWritableOutput},
-    processor::{Bundler, UnbundlerBuilder, json},
+    processor::{BundlerBuilder, UnbundlerBuilder, json},
 };
 
 #[derive(Parser)]
@@ -156,7 +156,12 @@ fn main() -> Result<()> {
             dir,
             escape,
             output,
-        } => Bundler::new(dir, output).bundle(escape),
+        } => {
+            let bundler = BundlerBuilder::new(dir, output)
+                .escape_fields(escape)
+                .build();
+            bundler.bundle()
+        }
         Commands::Unbundle {
             compact,
             input,

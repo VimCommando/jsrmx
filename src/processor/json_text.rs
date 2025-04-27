@@ -1,11 +1,11 @@
 use serde_json::Value;
 
-pub enum JsonField {
+pub enum JsonText {
     String(String),
     Value(Value),
 }
 
-impl JsonField {
+impl JsonText {
     pub fn unescape(self) -> Value {
         match self {
             Self::String(string) => {
@@ -31,13 +31,13 @@ impl JsonField {
     }
 }
 
-impl From<String> for JsonField {
+impl From<String> for JsonText {
     fn from(string: String) -> Self {
         Self::String(string)
     }
 }
 
-impl From<Value> for JsonField {
+impl From<Value> for JsonText {
     fn from(json: Value) -> Self {
         match json {
             Value::String(string) => Self::String(string),

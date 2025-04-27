@@ -1,21 +1,55 @@
-use super::dots_to_slashes;
 use crate::{
     input::{InputDirectory, JsonSource},
     output::JsonAppendableOutput,
-    processor::json_field::JsonField,
+    processor::json::Json,
 };
 use eyre::{Result, eyre};
+
+pub struct BundlerBuilder {
+    input: InputDirectory,
+    output: JsonAppendableOutput,
+    escape_fields: Option<Vec<String>>,
+    drop_fields: Option<Vec<String>>,
+}
+
+impl BundlerBuilder {
+    pub fn new(input: InputDirectory, output: JsonAppendableOutput) -> Self {
+        Self {
+            input,
+            output,
+            escape_fields: None,
+            drop_fields: None,
+        }
+    }
+
+    pub fn escape_fields(mut self, fields: Option<Vec<String>>) -> Self {
+        self.escape_fields = fields;
+        self
+    }
+
+    pub fn drop_fields(mut self, fields: Option<Vec<String>>) -> Self {
+        self.drop_fields = fields;
+        self
+    }
+
+    pub fn build(self) -> Bundler {
+        Bundler {
+            input: self.input,
+            output: self.output,
+            escape_fields: self.escape_fields,
+            drop_fields: self.drop_fields,
+        }
+    }
+}
 
 pub struct Bundler {
     input: InputDirectory,
     output: JsonAppendableOutput,
+    escape_fields: Option<Vec<String>>,
+    drop_fields: Option<Vec<String>>,
 }
 
 impl Bundler {
-    pub fn new(input: InputDirectory, output: JsonAppendableOutput) -> Self {
-        Self { input, output }
-    }
-
     /// Bundles JSON files from the specified directory into a single output.
     ///
     /// # Arguments
@@ -23,36 +57,19 @@ impl Bundler {
     /// * `dir` - A reference to a `PathBuf` representing the directory containing JSON files.
     /// * `output` - A reference to an `Output` where the bundled JSON will be written.
 
-    pub fn bundle(&self, json_fields: Option<Vec<String>>) -> Result<()> {
-        self.read_entries_to_output(json_fields)
-    }
-
-    /// Reads all JSON files in the specified directory and appends their contents to the output.
-    ///
-    /// # Arguments
-    ///
-    /// * `dir` - A reference to a `PathBuf` representing the directory containing JSON files.
-    /// * `output` - A reference to an `Output` where the JSON data will be appended.
-
-    fn read_entries_to_output(&self, json_fields: Option<Vec<String>>) -> Result<()> {
-        log::debug!("Escaping fields: {:?}", json_fields);
+    pub fn bundle(&self) -> Result<()> {
         let output = self
             .output
             .read()
-            .map_err(|_| eyre!("Error acquiring read lock on output"))?;
+            .map_err(|e| eyre!("Error acquiring read lock on output: {}", e))?;
         self.input
             .get_entries(false)
             .drain(..)
-            .try_for_each(|(_name, mut json)| {
-                if let Some(ref json_fields) = json_fields {
-                    json_fields.iter().for_each(|field| {
-                        if let Some(value) = json.pointer_mut(&dots_to_slashes(field)) {
-                            log::debug!("Escaping field {}", field);
-                            *value = JsonField::from(value.clone()).escape();
-                        }
-                    });
-                }
-                output.append(json).map_err(|e| eyre!(e))
+            .try_for_each(|(_name, value)| {
+                let mut json = Json::from(value);
+                json.escape_fields(self.escape_fields.as_ref());
+                json.drop_fields(self.drop_fields.as_ref());
+                output.append(json.value).map_err(|e| eyre!(e))
             })
     }
 }

@@ -1,7 +1,9 @@
-use super::dots_to_slashes;
-use crate::{input::JsonReaderInput, output::JsonWritableOutput, processor::json_field::JsonField};
+use crate::{
+    input::JsonReaderInput,
+    output::JsonWritableOutput,
+    processor::{dots_to_slashes, json::Json},
+};
 use eyre::{Result, eyre};
-use json_patch::jsonptr::Pointer;
 use serde_json::Value;
 
 pub struct UnbundlerBuilder {
@@ -89,18 +91,18 @@ impl Unbundler {
             .as_ref()
             .map(|field| dots_to_slashes(&field));
 
-        let name_entry = |i: usize, json: &Value| {
+        let name_entry = |i: usize, value: &Value| {
             let default_name = format!("object-{i:06}");
 
             let name = name_list
                 .iter()
-                .find_map(|name| json.pointer(name))
+                .find_map(|name| value.pointer(name))
                 .map_or(default_name, |value| {
                     value.as_str().unwrap_or_default().to_string()
                 });
 
             match &type_field {
-                Some(field) => json.pointer(&field).map_or(name.clone(), |value| {
+                Some(field) => value.pointer(&field).map_or(name.clone(), |value| {
                     format!("{name}.{}", value.as_str().unwrap_or_default().to_string())
                 }),
                 None => name,
@@ -109,11 +111,11 @@ impl Unbundler {
 
         let mut buf = String::new();
         while let Ok(()) = self.input.read_line(&mut buf) {
-            match serde_json::from_str::<Value>(&buf) {
+            match Json::try_from(&buf) {
                 Ok(mut json) => {
-                    self.unescape_fields(&mut json);
-                    self.drop_fields(&mut json);
-                    let entry = vec![(name_entry(i, &json), json)];
+                    json.unescape_fields(self.unescape_fields.as_ref());
+                    json.drop_fields(self.drop_fields.as_ref());
+                    let entry = vec![(name_entry(i, &json.value), json.value)];
                     self.output
                         .read()
                         .map_err(|_| eyre!("Error acquiring read lock on output"))?
@@ -126,27 +128,5 @@ impl Unbundler {
             i += 1;
         }
         Ok(())
-    }
-
-    fn unescape_fields(&self, json: &mut Value) {
-        self.unescape_fields.as_ref().map(|fields| {
-            fields.iter().for_each(|field| {
-                json.pointer_mut(&dots_to_slashes(field)).map(|value| {
-                    log::debug!("Unescaping field {}", field);
-                    *value = JsonField::from(value.clone()).unescape();
-                });
-            })
-        });
-    }
-
-    fn drop_fields(&self, json: &mut Value) {
-        self.drop_fields.as_ref().map(|fields| {
-            fields.iter().for_each(|field| {
-                let str = dots_to_slashes(field);
-                if let Ok(ptr) = Pointer::parse(&str) {
-                    ptr.delete(json);
-                }
-            });
-        });
     }
 }
