@@ -50,13 +50,6 @@ pub struct Bundler {
 }
 
 impl Bundler {
-    /// Bundles JSON files from the specified directory into a single output.
-    ///
-    /// # Arguments
-    ///
-    /// * `dir` - A reference to a `PathBuf` representing the directory containing JSON files.
-    /// * `output` - A reference to an `Output` where the bundled JSON will be written.
-
     pub fn bundle(&self) -> Result<()> {
         let output = self
             .output

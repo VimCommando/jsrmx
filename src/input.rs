@@ -3,10 +3,10 @@ mod file;
 mod stdin;
 
 pub use directory::InputDirectory;
-use eyre::{eyre, Report, Result};
+use eyre::{Report, Result, eyre};
 use file::InputFile;
 use serde_json::Value;
-use std::{collections::HashMap, ops::Deref, path::PathBuf, sync::Arc};
+use std::{ops::Deref, path::PathBuf, sync::Arc};
 use stdin::InputStdin;
 
 pub trait JsonSource: Send + Sync {
@@ -15,7 +15,7 @@ pub trait JsonSource: Send + Sync {
 }
 
 pub trait JsonReader: Send + Sync {
-    fn get_object(&self) -> Result<HashMap<String, Value>>;
+    fn get_object(&self) -> Result<Value>;
     fn read_line(&self, buf: &mut String) -> Result<()>;
 }
 

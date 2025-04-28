@@ -5,6 +5,7 @@ pub mod json_text;
 /// Process newline-delimited lists of JSON objects
 mod ndjson;
 
+pub use json::Json;
 pub use ndjson::{Bundler, BundlerBuilder, Unbundler, UnbundlerBuilder};
 
 pub fn dots_to_slashes(str: &str) -> String {

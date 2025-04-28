@@ -1,9 +1,8 @@
 use super::{JsonReader, JsonSource};
-use eyre::{eyre, Result};
+use eyre::{Result, eyre};
 use serde_json::Value;
 use std::{
-    collections::HashMap,
-    io::{stdin, BufRead, BufReader, Read, Stdin},
+    io::{BufRead, BufReader, Read, Stdin, stdin},
     sync::{Arc, Mutex},
 };
 
@@ -48,7 +47,7 @@ impl JsonSource for InputStdin {
 }
 
 impl JsonReader for InputStdin {
-    fn get_object(&self) -> Result<HashMap<String, Value>> {
+    fn get_object(&self) -> Result<Value> {
         let mut buffer = String::new();
         stdin().read_to_string(&mut buffer)?;
         Ok(serde_json::from_str(&buffer)?)
