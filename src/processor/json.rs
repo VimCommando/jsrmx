@@ -23,8 +23,8 @@ impl Json {
         Json { value }
     }
 
-    pub fn unescape_fields(&mut self, unescape_fields: Option<&Vec<String>>) {
-        unescape_fields.map(|fields| {
+    pub fn unescape(mut self, fields: Option<&Vec<String>>) -> Self {
+        if let Some(fields) = fields {
             fields.iter().for_each(|field| {
                 self.value
                     .pointer_mut(&dots_to_slashes(field))
@@ -33,11 +33,12 @@ impl Json {
                         *value = JsonText::from(value.clone()).unescape();
                     });
             });
-        });
+        };
+        self
     }
 
-    pub fn escape_fields(&mut self, escape_fields: Option<&Vec<String>>) {
-        escape_fields.map(|fields| {
+    pub fn escape(mut self, fields: Option<&Vec<String>>) -> Self {
+        if let Some(fields) = fields {
             fields.iter().for_each(|field| {
                 self.value
                     .pointer_mut(&dots_to_slashes(field))
@@ -46,25 +47,27 @@ impl Json {
                         *value = JsonText::from(value.clone()).escape();
                     });
             });
-        });
+        };
+        self
     }
 
-    pub fn drop_fields(&mut self, drop_fields: Option<&Vec<String>>) {
-        drop_fields.map(|fields| {
+    pub fn drop(mut self, fields: Option<&Vec<String>>) -> Self {
+        if let Some(fields) = fields {
             fields.iter().for_each(|field| {
                 let str = dots_to_slashes(field);
                 if let Ok(ptr) = Pointer::parse(&str) {
                     ptr.delete(&mut self.value);
                 }
             });
-        });
+        };
+        self
     }
 
-    pub fn as_value(self, filter: Option<String>) -> Result<Value> {
+    pub fn filter(mut self, filter: Option<String>) -> Result<Self> {
         if let Some(filter) = filter {
             let regex = Regex::new(&filter)?;
             log::info!("Regex key filter: {:?}", regex);
-            let filtered = self
+            self.value = self
                 .value
                 .as_object()
                 .expect("Expected object")
@@ -72,14 +75,11 @@ impl Json {
                 .filter(|(key, _)| regex.is_match(key))
                 .map(|(key, value)| (key.clone(), value.clone()))
                 .collect();
-
-            Ok(Value::Object(filtered))
-        } else {
-            Ok(self.value)
         }
+        Ok(self)
     }
 
-    pub fn as_entries(self, filter: Option<String>) -> Result<Vec<(String, Value)>> {
+    pub fn entries(self, filter: Option<String>) -> Result<Vec<(String, Value)>> {
         let regex: Option<Regex> = filter.and_then(|f| match Regex::new(&f) {
             Ok(r) => Some(r),
             Err(e) => {
@@ -96,6 +96,10 @@ impl Json {
             })
             .collect();
         Ok(entries)
+    }
+
+    pub fn value(self) -> Value {
+        self.value
     }
 }
 
@@ -155,8 +159,9 @@ mod tests {
         ];
         let filter = Some("b".to_string());
         let result = Json::from(entries)
-            .as_value(filter)
-            .expect("Failed to filter JSON");
+            .filter(filter)
+            .expect("Failed to filter JSON")
+            .value();
         assert_eq!(result, json!({"b": "2"}));
     }
 
@@ -169,8 +174,9 @@ mod tests {
         ];
         let filter = None;
         let result = Json::from(entries)
-            .as_value(filter)
-            .expect("Failed to filter JSON");
+            .filter(filter)
+            .expect("Failed to filter JSON")
+            .value();
         assert_eq!(result, json!({"a": "1", "b": "2", "c": "3"}));
     }
 
@@ -183,7 +189,7 @@ mod tests {
         });
         let filter = Some("b".to_string());
         let result = Json::from(object)
-            .as_entries(filter)
+            .entries(filter)
             .expect("Failed to split JSON");
         assert_eq!(
             result,
@@ -200,7 +206,7 @@ mod tests {
         });
         let filter = None;
         let mut entries = Json::from(object)
-            .as_entries(filter)
+            .entries(filter)
             .expect("Failed to split JSON");
         // Split's output is non-deterministic, so we sort it to compare
         entries.sort_unstable_by_key(|(key, _)| key.clone());

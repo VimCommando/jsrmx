@@ -59,10 +59,11 @@ impl Bundler {
             .get_entries(false)
             .drain(..)
             .try_for_each(|(_name, value)| {
-                let mut json = Json::from(value);
-                json.escape_fields(self.escape_fields.as_ref());
-                json.drop_fields(self.drop_fields.as_ref());
-                output.append(json.value).map_err(|e| eyre!(e))
+                let json = Json::from(value)
+                    .escape(self.escape_fields.as_ref())
+                    .drop(self.drop_fields.as_ref())
+                    .value();
+                output.append(json).map_err(|e| eyre!(e))
             })
     }
 }

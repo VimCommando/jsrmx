@@ -112,10 +112,12 @@ impl Unbundler {
         let mut buf = String::new();
         while let Ok(()) = self.input.read_line(&mut buf) {
             match Json::try_from(&buf) {
-                Ok(mut json) => {
-                    json.unescape_fields(self.unescape_fields.as_ref());
-                    json.drop_fields(self.drop_fields.as_ref());
-                    let entry = vec![(name_entry(i, &json.value), json.value)];
+                Ok(json) => {
+                    let json = json
+                        .unescape(self.unescape_fields.as_ref())
+                        .drop(self.drop_fields.as_ref())
+                        .value();
+                    let entry = vec![(name_entry(i, &json), json)];
                     self.output
                         .read()
                         .map_err(|_| eyre!("Error acquiring read lock on output"))?
