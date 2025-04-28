@@ -119,7 +119,7 @@ fn main() -> Result<()> {
         } => {
             let entries = input.get_entries(sort);
             let json = Json::from(entries)
-                .filter(filter)?
+                .filter(filter.as_ref())?
                 .drop(cli.drop.as_ref())
                 .value();
             if pretty && !compact {
@@ -148,7 +148,11 @@ fn main() -> Result<()> {
                     .set_pretty(true);
             };
             let object = input.get_object().expect("Error reading input: {input:?}");
-            let entries = Json::from(object).entries(filter)?;
+            let entries = Json::from(object)
+                .entries()?
+                .filter(filter.as_ref())?
+                .drop(cli.drop.as_ref())
+                .list();
             output
                 .read()
                 .expect("Error acquiring read lock on output")

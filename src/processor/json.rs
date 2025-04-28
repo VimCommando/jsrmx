@@ -66,7 +66,7 @@ impl Json {
         self
     }
 
-    pub fn filter(mut self, filter: Option<String>) -> Result<Self> {
+    pub fn filter(mut self, filter: Option<&String>) -> Result<Self> {
         log::debug!("Filtering keys: {:?}", filter);
         if let Some(filter) = filter {
             let regex = Regex::new(&filter)?;
@@ -83,23 +83,10 @@ impl Json {
         Ok(self)
     }
 
-    pub fn entries(self, filter: Option<String>) -> Result<Vec<(String, Value)>> {
-        let regex: Option<Regex> = filter.and_then(|f| match Regex::new(&f) {
-            Ok(r) => Some(r),
-            Err(e) => {
-                log::error!("Error parsing regex: {}", e);
-                None
-            }
-        });
+    pub fn entries(self) -> Result<Entries> {
         let mut entries: HashMap<String, Value> = serde_json::from_value(self.value)?;
-        let entries: Vec<(String, Value)> = entries
-            .par_drain()
-            .filter_map(|(key, value)| match regex {
-                Some(ref regex) => regex.is_match(&key).then_some((key, value)),
-                None => Some((key, value)),
-            })
-            .collect();
-        Ok(entries)
+        let entries = entries.par_drain().collect::<Vec<(String, Value)>>();
+        Ok(Entries::new(entries))
     }
 
     pub fn value(self) -> Value {
@@ -107,9 +94,58 @@ impl Json {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Entries {
+    list: Vec<(String, Value)>,
+}
+
+impl Entries {
+    pub fn new(list: Vec<(String, Value)>) -> Self {
+        Entries { list }
+    }
+
+    pub fn drop(mut self, fields: Option<&Vec<String>>) -> Self {
+        self.list
+            .iter_mut()
+            .map(|(_, value)| {
+                *value = Json::from(value.clone()).drop(fields).value();
+            })
+            .count();
+
+        self
+    }
+
+    pub fn filter(mut self, fields: Option<&String>) -> Result<Self> {
+        self.list = self
+            .list
+            .into_iter()
+            .filter(|(key, _)| match fields {
+                Some(filter) => {
+                    let regex = Regex::new(filter).expect("Invalid regex");
+                    regex.is_match(key)
+                }
+                None => true,
+            })
+            .collect();
+        Ok(self)
+    }
+
+    pub fn list(self) -> Vec<(String, Value)> {
+        self.list
+    }
+}
+
 impl From<serde_json::Value> for Json {
     fn from(value: serde_json::Value) -> Self {
         Json { value }
+    }
+}
+
+impl From<&mut serde_json::Value> for Json {
+    fn from(value: &mut serde_json::Value) -> Self {
+        Json {
+            value: value.clone(),
+        }
     }
 }
 
@@ -163,7 +199,7 @@ mod tests {
         ];
         let filter = Some("b".to_string());
         let result = Json::from(entries)
-            .filter(filter)
+            .filter(filter.as_ref())
             .expect("Failed to filter JSON")
             .value();
         assert_eq!(result, json!({"b": "2"}));
@@ -185,7 +221,7 @@ mod tests {
     }
 
     #[test]
-    fn split_filtered() {
+    fn split_filtered() -> Result<()> {
         let object = json!({
             "a": "1",
             "b": "2",
@@ -193,25 +229,25 @@ mod tests {
         });
         let filter = Some("b".to_string());
         let result = Json::from(object)
-            .entries(filter)
-            .expect("Failed to split JSON");
+            .entries()?
+            .filter(filter.as_ref())?
+            .list();
         assert_eq!(
             result,
             vec![("b".to_string(), Value::String("2".to_string()))]
         );
+        Ok(())
     }
 
     #[test]
-    fn split_unfiltered() {
+    fn split_unfiltered() -> Result<()> {
         let object = json!({
             "a": "1",
             "b": "2",
             "c": "3"
         });
         let filter = None;
-        let mut entries = Json::from(object)
-            .entries(filter)
-            .expect("Failed to split JSON");
+        let mut entries = Json::from(object).entries()?.filter(filter)?.list();
         // Split's output is non-deterministic, so we sort it to compare
         entries.sort_unstable_by_key(|(key, _)| key.clone());
         assert_eq!(
@@ -222,5 +258,6 @@ mod tests {
                 ("c".to_string(), Value::String("3".to_string())),
             ]
         );
+        Ok(())
     }
 }
