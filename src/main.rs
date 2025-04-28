@@ -118,7 +118,10 @@ fn main() -> Result<()> {
             sort,
         } => {
             let entries = input.get_entries(sort);
-            let json = Json::from(entries).filter(filter)?.value();
+            let json = Json::from(entries)
+                .filter(filter)?
+                .drop(cli.drop.as_ref())
+                .value();
             if pretty && !compact {
                 output
                     .write()
@@ -159,7 +162,9 @@ fn main() -> Result<()> {
         } => {
             let bundler = BundlerBuilder::new(dir, output)
                 .escape_fields(escape)
+                .drop_fields(cli.drop)
                 .build();
+
             bundler.bundle()
         }
         Commands::Unbundle {

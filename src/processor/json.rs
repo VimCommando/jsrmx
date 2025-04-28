@@ -24,6 +24,7 @@ impl Json {
     }
 
     pub fn unescape(mut self, fields: Option<&Vec<String>>) -> Self {
+        log::debug!("Unescaping fields: {:?}", fields);
         if let Some(fields) = fields {
             fields.iter().for_each(|field| {
                 self.value
@@ -38,6 +39,7 @@ impl Json {
     }
 
     pub fn escape(mut self, fields: Option<&Vec<String>>) -> Self {
+        log::debug!("Escaping fields: {:?}", fields);
         if let Some(fields) = fields {
             fields.iter().for_each(|field| {
                 self.value
@@ -52,6 +54,7 @@ impl Json {
     }
 
     pub fn drop(mut self, fields: Option<&Vec<String>>) -> Self {
+        log::debug!("Dropping fields: {:?}", fields);
         if let Some(fields) = fields {
             fields.iter().for_each(|field| {
                 let str = dots_to_slashes(field);
@@ -64,6 +67,7 @@ impl Json {
     }
 
     pub fn filter(mut self, filter: Option<String>) -> Result<Self> {
+        log::debug!("Filtering keys: {:?}", filter);
         if let Some(filter) = filter {
             let regex = Regex::new(&filter)?;
             log::info!("Regex key filter: {:?}", regex);
