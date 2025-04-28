@@ -1,8 +1,9 @@
 use clap::{Parser, Subcommand};
+use eyre::{Result, eyre};
 use jsrmx::{
     input::{InputDirectory, JsonReaderInput, JsonSourceInput},
     output::{JsonAppendableOutput, JsonWritableOutput},
-    processor::{NdjsonBundler, NdjsonUnbundler, json},
+    processor::{BundlerBuilder, Json, UnbundlerBuilder},
 };
 
 #[derive(Parser)]
@@ -11,6 +12,10 @@ use jsrmx::{
 struct Cli {
     #[command(subcommand)]
     command: Commands,
+
+    /// Fields to drop from the output
+    #[arg(long, global = true, value_delimiter = ',')]
+    drop: Option<Vec<String>>,
 }
 
 #[derive(Subcommand)]
@@ -90,7 +95,7 @@ enum Commands {
     },
 }
 
-fn main() {
+fn main() -> Result<()> {
     let cli = Cli::parse();
     let env = env_logger::Env::default().filter_or("LOG_LEVEL", "warn");
     env_logger::Builder::from_env(env)
@@ -113,7 +118,10 @@ fn main() {
             sort,
         } => {
             let entries = input.get_entries(sort);
-            let merged_object = json::merge(entries, filter);
+            let json = Json::from(entries)
+                .filter(filter.as_ref())?
+                .drop(cli.drop.as_ref())
+                .value();
             if pretty && !compact {
                 output
                     .write()
@@ -123,8 +131,8 @@ fn main() {
             output
                 .read()
                 .expect("Error acquiring read lock on output")
-                .append(merged_object)
-                .unwrap_or_else(|e| log::error!("Error writing to output: {e}"));
+                .append(json)
+                .map_err(|e| eyre!("Error writing to output: {e}"))
         }
         Commands::Split {
             compact,
@@ -140,24 +148,29 @@ fn main() {
                     .set_pretty(true);
             };
             let object = input.get_object().expect("Error reading input: {input:?}");
-            let entries = json::split(object, filter);
+            let entries = Json::from(object)
+                .entries()?
+                .filter(filter.as_ref())?
+                .drop(cli.drop.as_ref())
+                .list();
             output
                 .read()
                 .expect("Error acquiring read lock on output")
                 .write_entries(entries)
-                .unwrap_or_else(|e| {
-                    log::error!("Error splitting: {e}");
-                });
+                .map_err(|e| eyre!("Error writing to output: {e}"))
         }
         Commands::Bundle {
             dir,
             escape,
             output,
-        } => NdjsonBundler::new(dir, output)
-            .bundle(escape)
-            .unwrap_or_else(|e| {
-                log::error!("Error bundling: {e}");
-            }),
+        } => {
+            let bundler = BundlerBuilder::new(dir, output)
+                .escape_fields(escape)
+                .drop_fields(cli.drop)
+                .build();
+
+            bundler.bundle()
+        }
         Commands::Unbundle {
             compact,
             input,
@@ -173,11 +186,14 @@ fn main() {
                     .expect("Error acquiring write lock on output")
                     .set_pretty(true);
             }
-            NdjsonUnbundler::new(input, output, unescape)
-                .unbundle(name, type_field)
-                .unwrap_or_else(|e| {
-                    log::error!("Error unbundling: {e}");
-                })
+            let unbundler = UnbundlerBuilder::new(input, output)
+                .unescape_fields(unescape)
+                .drop_fields(cli.drop)
+                .filename(name)
+                .type_field(type_field)
+                .build();
+
+            unbundler.unbundle()
         }
     }
 }

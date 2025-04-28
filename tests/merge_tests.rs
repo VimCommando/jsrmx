@@ -4,7 +4,7 @@ use std::fs;
 use tempfile::tempdir;
 
 #[test]
-fn test_merge_basic() -> std::io::Result<()> {
+fn merge_basic() -> std::io::Result<()> {
     let (input_dir, output_dir, _files) = setup_merge_test()?;
     let output_file = output_dir.path().join("merged.json");
 
@@ -25,12 +25,12 @@ fn test_merge_basic() -> std::io::Result<()> {
         serde_json::from_str(&fs::read_to_string(&output_file)?)?;
 
     let expected_content = json!({
-        "alpha": {"uppercase": "A", "lowercase": "a", "position": 1},
-        "bravo": {"uppercase": "B", "lowercase": "b", "position": 2},
-        "charlie": {"uppercase": "C", "lowercase": "c", "position": 3},
-        "delta": {"uppercase": "D", "lowercase": "d", "position": 4},
-        "echo": {"uppercase": "E", "lowercase": "e", "position": 5},
-        "foxtrot": {"uppercase": "F", "lowercase": "f", "position": 6},
+        "alpha": {"letter": {"uppercase": "A", "lowercase": "a"}, "position": 1},
+        "bravo": {"letter": {"uppercase": "B", "lowercase": "b"}, "position": 2},
+        "charlie": {"letter": {"uppercase": "C", "lowercase": "c"}, "position": 3},
+        "delta": {"letter": {"uppercase": "D", "lowercase": "d"}, "position": 4},
+        "echo": {"letter": {"uppercase": "E", "lowercase": "e"}, "position": 5},
+        "foxtrot": {"letter": {"uppercase": "F", "lowercase": "f"}, "position": 6},
     });
 
     assert_eq!(
@@ -43,7 +43,7 @@ fn test_merge_basic() -> std::io::Result<()> {
 
 // TODO: The --compact option is not yet implemented for the merge command
 // #[test]
-// fn test_merge_compact() -> std::io::Result<()> {
+// fn merge_compact() -> std::io::Result<()> {
 //     let (input_dir, output_dir, _) = setup_merge_test()?;
 //     let output_file = output_dir.path().join("merged.json");
 
@@ -71,7 +71,7 @@ fn test_merge_basic() -> std::io::Result<()> {
 // }
 
 #[test]
-fn test_merge_filter() -> std::io::Result<()> {
+fn merge_filter() -> std::io::Result<()> {
     let (input_dir, output_dir, _) = setup_merge_test()?;
     let output_file = output_dir.path().join("merged.json");
 
@@ -92,9 +92,10 @@ fn test_merge_filter() -> std::io::Result<()> {
 
     let filtered_content: serde_json::Value =
         serde_json::from_str(&fs::read_to_string(&output_file)?)?;
+
     let expected_filtered = json!({
-        "alpha": {"uppercase": "A", "lowercase": "a", "position": 1},
-        "charlie": {"uppercase": "C", "lowercase": "c", "position": 3},
+        "alpha": {"letter": {"uppercase": "A", "lowercase": "a"}, "position": 1},
+        "charlie": {"letter": {"uppercase": "C", "lowercase": "c"}, "position": 3},
     });
 
     assert_eq!(
@@ -105,9 +106,47 @@ fn test_merge_filter() -> std::io::Result<()> {
     Ok(())
 }
 
+#[test]
+fn merge_with_drop() -> std::io::Result<()> {
+    let (input_dir, output_dir, _) = setup_merge_test()?;
+    let output_file = output_dir.path().join("merged.json");
+
+    let output = Command::cargo_bin("jsrmx")
+        .unwrap()
+        .arg("merge")
+        .arg("--drop=alpha.position,foxtrot")
+        .arg(input_dir.path())
+        .arg(&output_file)
+        .output()?;
+
+    assert!(
+        output.status.success(),
+        "Merge command with --drop failed: {:?}",
+        output
+    );
+
+    let dropped_content: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&output_file)?)?;
+
+    let expected_content = json!({
+        "alpha": {"letter": {"uppercase": "A", "lowercase": "a"}},
+        "bravo": {"letter": {"uppercase": "B", "lowercase": "b"}, "position": 2},
+        "charlie": {"letter": {"uppercase": "C", "lowercase": "c"}, "position": 3},
+        "delta": {"letter": {"uppercase": "D", "lowercase": "d"}, "position": 4},
+        "echo": {"letter": {"uppercase": "E", "lowercase": "e"}, "position": 5},
+    });
+
+    assert_eq!(
+        dropped_content, expected_content,
+        "Dropped content does not match expected"
+    );
+
+    Ok(())
+}
+
 // TODO: The --trim option is not yet implemented for the merge command
 // #[test]
-// fn test_merge_trim() -> std::io::Result<()> {
+// fn merge_trim() -> std::io::Result<()> {
 //     let (input_dir, output_dir, _) = setup_merge_test()?;
 //     let output_file = output_dir.path().join("merged.json");
 
@@ -158,27 +197,27 @@ fn setup_merge_test() -> std::io::Result<MergeTestSetup> {
     let files = vec![
         (
             "alpha.json".to_string(),
-            json!({"uppercase": "A", "lowercase": "a", "position": 1}),
+            json!({"letter": {"uppercase": "A", "lowercase": "a"}, "position": 1}),
         ),
         (
             "bravo.json".to_string(),
-            json!({"uppercase": "B", "lowercase": "b", "position": 2}),
+            json!({"letter": {"uppercase": "B", "lowercase": "b"}, "position": 2}),
         ),
         (
             "charlie.json".to_string(),
-            json!({"uppercase": "C", "lowercase": "c", "position": 3}),
+            json!({"letter": {"uppercase": "C", "lowercase": "c"}, "position": 3}),
         ),
         (
             "delta.json".to_string(),
-            json!({"uppercase": "D", "lowercase": "d", "position": 4}),
+            json!({"letter": {"uppercase": "D", "lowercase": "d"}, "position": 4}),
         ),
         (
             "echo.json".to_string(),
-            json!({"uppercase": "E", "lowercase": "e", "position": 5}),
+            json!({"letter": {"uppercase": "E", "lowercase": "e"}, "position": 5}),
         ),
         (
             "foxtrot.json".to_string(),
-            json!({"uppercase": "F", "lowercase": "f", "position": 6}),
+            json!({"letter": {"uppercase": "F", "lowercase": "f"}, "position": 6}),
         ),
     ];
 
