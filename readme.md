@@ -33,6 +33,9 @@ There are four commands:
 3. `bundle` - bundles multiple JSON objects ito an NDJSON (newline-delimited JSON) series
 4. `unbundle` - unbundles an NDJSON series into a collection of separate JSON objects
 
+All command support the option:
+- `-d`, `--drop` - Drop output properties that match the comma-separated JSON paths
+
 ### merge
 
 ```sh

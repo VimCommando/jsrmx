@@ -2,7 +2,7 @@
 name = "jsrmx"
 description = "A command-line tool to manipulate JSON files. It can split large single-object JSON files into many files; merge multiple JSON files into one large JSON file; bundle multiple JSON files into one NDJSON file, and unbundle one NDJSON file into many JSON files."
 repository = "https://github.com/VimCommando/jsrmx"
-version = "0.1.2"
+version = "0.2.0"
 edition = "2024"
 license = "AGPL-3.0"
 
